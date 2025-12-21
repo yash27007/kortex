@@ -144,20 +144,29 @@ function KnowledgeGraph() {
   );
 }
 
-// Floating particles background
-function FloatingParticles() {
-  const particles = Array.from({ length: 30 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 3 + 1,
-    duration: Math.random() * 10 + 15,
-    delay: Math.random() * 5,
-  }));
+// Floating particles background - using static values to avoid hydration mismatch
+const PARTICLES = [
+  { id: 0, x: 12, y: 8, size: 2, duration: 18, delay: 1 },
+  { id: 1, x: 85, y: 15, size: 3, duration: 22, delay: 3 },
+  { id: 2, x: 45, y: 25, size: 1.5, duration: 16, delay: 0 },
+  { id: 3, x: 72, y: 42, size: 2.5, duration: 20, delay: 2 },
+  { id: 4, x: 28, y: 55, size: 2, duration: 19, delay: 4 },
+  { id: 5, x: 92, y: 68, size: 3, duration: 24, delay: 1.5 },
+  { id: 6, x: 18, y: 78, size: 1.8, duration: 17, delay: 2.5 },
+  { id: 7, x: 55, y: 88, size: 2.2, duration: 21, delay: 0.5 },
+  { id: 8, x: 38, y: 12, size: 2.8, duration: 23, delay: 3.5 },
+  { id: 9, x: 68, y: 32, size: 1.6, duration: 15, delay: 4.5 },
+  { id: 10, x: 5, y: 45, size: 2.4, duration: 18, delay: 1.2 },
+  { id: 11, x: 78, y: 58, size: 3.2, duration: 20, delay: 2.8 },
+  { id: 12, x: 42, y: 72, size: 1.9, duration: 22, delay: 0.8 },
+  { id: 13, x: 95, y: 35, size: 2.6, duration: 16, delay: 3.2 },
+  { id: 14, x: 22, y: 92, size: 2.1, duration: 19, delay: 4.2 },
+];
 
+function FloatingParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((p) => (
+      {PARTICLES.map((p) => (
         <motion.div
           key={p.id}
           className="absolute rounded-full bg-amber-400"
@@ -166,8 +175,8 @@ function FloatingParticles() {
             height: p.size,
             left: `${p.x}%`,
             top: `${p.y}%`,
-            opacity: 0.2,
           }}
+          initial={{ opacity: 0 }}
           animate={{
             y: [0, -100, 0],
             opacity: [0, 0.4, 0],
