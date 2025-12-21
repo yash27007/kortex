@@ -1,17 +1,20 @@
 import { z } from 'zod';
 import { baseProcedure, createTRPCRouter } from '@/server/trpc/init';
+import { userRouter } from './user';
+import { courseRouter } from './course';
+import { lessonRouter } from './lesson';
+
 export const appRouter = createTRPCRouter({
-  hello: baseProcedure
-    .input(
-      z.object({
-        text: z.string(),
-      }),
-    )
-    .query((opts) => {
-      return {
-        greeting: `Hello bhaiiiii ${opts.input.text}`,
-      };
-    }),
+  // Health check
+  health: baseProcedure.query(() => {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }),
+
+  // Sub-routers
+  user: userRouter,
+  course: courseRouter,
+  lesson: lessonRouter,
 });
-// export type definition of API
+
+// Export type definition of API
 export type AppRouter = typeof appRouter;
