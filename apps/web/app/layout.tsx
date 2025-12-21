@@ -39,7 +39,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" className="dark">
         <body
-          className={`${inter.variable} font-sans bg-gray-900 text-white antialiased selection:bg-violet-500/30`}
+          className={`${inter.variable} font-sans bg-slate-950 text-white antialiased selection:bg-amber-500/30`}
         >
           <TRPCReactProvider>
             <SmoothScrollProvider>

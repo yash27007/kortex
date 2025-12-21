@@ -154,28 +154,32 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(139, 92, 246, 0.3);
+    background: rgba(251, 191, 36, 0.3);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.5);
+    background: rgba(251, 191, 36, 0.5);
   }
 }
 
 @layer utilities {
-  /* Text gradient utility */
+  /* Text gradient utility - Gold/Amber theme */
   .text-gradient {
-    @apply bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent;
   }
 
-  /* Glow effects */
+  /* Glow effects - Gold/Amber theme */
   .glow {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
   }
 
   .glow-lg {
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.4);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
   }
 
   /* Glassmorphism */

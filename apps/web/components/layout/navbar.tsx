@@ -35,7 +35,7 @@ export function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-          ? "bg-gray-950/80 backdrop-blur-xl border-b border-white/5"
+          ? "bg-slate-950/80 backdrop-blur-xl border-b border-slate-800"
           : "bg-transparent"
         }`}
     >
@@ -59,14 +59,14 @@ export function Navbar() {
                     href={link.href}
                     className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
                         ? "text-white"
-                        : "text-gray-400 hover:text-white"
+                        : "text-slate-400 hover:text-white"
                       }`}
                   >
                     {link.label}
                     {isActive && (
                       <motion.div
                         layoutId="nav-active"
-                        className="absolute inset-0 bg-white/10 rounded-lg -z-10"
+                        className="absolute inset-0 bg-amber-500/10 border border-amber-500/20 rounded-lg -z-10"
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -81,13 +81,13 @@ export function Navbar() {
             <SignedOut>
               <Link
                 href="/sign-in"
-                className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors"
+                className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 href="/sign-up"
-                className="px-4 py-2 text-sm font-medium text-gray-900 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-900 bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg hover:from-amber-400 hover:to-amber-500 transition-all"
               >
                 Get Started
               </Link>
@@ -99,8 +99,8 @@ export function Navbar() {
                 appearance={{
                   elements: {
                     avatarBox: "w-8 h-8",
-                    userButtonPopoverCard: "bg-gray-900 border border-white/10",
-                    userButtonPopoverActionButton: "hover:bg-white/5",
+                    userButtonPopoverCard: "bg-slate-900 border border-slate-800",
+                    userButtonPopoverActionButton: "hover:bg-slate-800",
                   },
                 }}
               />
@@ -109,7 +109,7 @@ export function Navbar() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-white"
+              className="md:hidden p-2 text-slate-400 hover:text-white"
             >
               {mobileMenuOpen ? <HiX className="w-5 h-5" /> : <HiMenu className="w-5 h-5" />}
             </button>
@@ -125,14 +125,14 @@ export function Navbar() {
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden pb-4"
             >
-              <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
                 <SignedIn>
                   {navLinks.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block px-4 py-3 text-sm text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                      className="block px-4 py-3 text-sm text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -142,14 +142,14 @@ export function Navbar() {
                   <Link
                     href="/sign-in"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-sm text-gray-400 hover:text-white"
+                    className="block px-4 py-3 text-sm text-slate-400 hover:text-white"
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/sign-up"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-4 py-3 text-sm text-white bg-violet-600 rounded-lg text-center mt-2"
+                    className="block px-4 py-3 text-sm text-slate-900 bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg text-center mt-2"
                   >
                     Get Started
                   </Link>

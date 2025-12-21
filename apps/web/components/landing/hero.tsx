@@ -4,71 +4,173 @@ import { useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
-import { HiArrowRight } from "react-icons/hi2";
+import { HiArrowRight, HiPlay } from "react-icons/hi2";
 
-// Animated gradient orb SVG component
-function GradientOrb() {
+// Knowledge Graph Animation - nodes connecting and lighting up
+function KnowledgeGraph() {
+  // Pre-calculated node positions
+  const nodes = [
+    { x: 100, y: 80 },
+    { x: 180, y: 50 },
+    { x: 260, y: 90 },
+    { x: 140, y: 140 },
+    { x: 220, y: 150 },
+    { x: 300, y: 130 },
+    { x: 60, y: 140 },
+    { x: 340, y: 70 },
+    { x: 280, y: 180 },
+    { x: 160, y: 200 },
+  ];
+
+  // Connections between nodes
+  const connections: [number, number][] = [
+    [0, 1], [1, 2], [0, 3], [3, 4], [2, 5],
+    [0, 6], [2, 7], [4, 8], [3, 9], [4, 5],
+    [1, 4], [6, 3], [5, 7], [8, 9],
+  ];
+
   return (
     <motion.svg
-      viewBox="0 0 400 400"
-      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-60"
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 0.6 }}
-      transition={{ duration: 1.5, ease: "easeOut" }}
+      viewBox="0 0 400 260"
+      className="absolute right-0 top-1/2 -translate-y-1/2 w-[500px] h-[325px] opacity-40 hidden lg:block"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 0.4 }}
+      transition={{ duration: 1 }}
     >
       <defs>
-        <radialGradient id="orbGradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-          <stop offset="50%" stopColor="#6366f1" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0" />
-        </radialGradient>
-        <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="40" />
+        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
-      <motion.circle
-        cx="200"
-        cy="200"
-        r="180"
-        fill="url(#orbGradient)"
-        filter="url(#blur)"
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.6, 0.8, 0.6],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
+
+      {/* Connection lines */}
+      {connections.map((conn, i) => {
+        const fromNode = nodes[conn[0]]!;
+        const toNode = nodes[conn[1]]!;
+        return (
+          <motion.line
+            key={`line-${i}`}
+            x1={fromNode.x}
+            y1={fromNode.y}
+            x2={toNode.x}
+            y2={toNode.y}
+            stroke="#fbbf24"
+            strokeWidth="1"
+            strokeOpacity="0.3"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 0.4 }}
+            transition={{ duration: 1.5, delay: 0.5 + i * 0.1 }}
+          />
+        );
+      })}
+
+      {/* Nodes */}
+      {nodes.map((node, i) => (
+        <motion.g key={`node-${i}`}>
+          {/* Outer glow */}
+          <motion.circle
+            cx={node.x}
+            cy={node.y}
+            r="12"
+            fill="none"
+            stroke="#fbbf24"
+            strokeWidth="1"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 0.2, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.8 + i * 0.1 }}
+          />
+          {/* Core node */}
+          <motion.circle
+            cx={node.x}
+            cy={node.y}
+            r="6"
+            fill="#1e293b"
+            stroke="url(#goldGrad)"
+            strokeWidth="2"
+            filter="url(#glow)"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.8 + i * 0.1 }}
+          />
+          {/* Pulsing center */}
+          <motion.circle
+            cx={node.x}
+            cy={node.y}
+            r="3"
+            fill="#fbbf24"
+            animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1.1, 0.8] }}
+            transition={{ duration: 2 + i * 0.2, repeat: Infinity, delay: i * 0.1 }}
+          />
+        </motion.g>
+      ))}
     </motion.svg>
   );
 }
 
-// Abstract wave decoration
-function WaveDecoration() {
+// Animated grid pattern with squares
+function GridPattern() {
   return (
-    <motion.svg
-      viewBox="0 0 1200 120"
-      className="absolute bottom-0 left-0 w-full h-24 opacity-10"
-      preserveAspectRatio="none"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 0.1, y: 0 }}
-      transition={{ duration: 1, delay: 0.5 }}
-    >
-      <path
-        d="M0,60 C300,120 400,0 600,60 C800,120 900,0 1200,60 L1200,120 L0,120 Z"
-        fill="url(#waveGradient)"
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Base grid */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(251, 191, 36, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(251, 191, 36, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: "60px 60px",
+        }}
       />
-      <defs>
-        <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#8b5cf6" />
-          <stop offset="50%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#8b5cf6" />
-        </linearGradient>
-      </defs>
-    </motion.svg>
+      {/* Animated highlight squares */}
+      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="squareGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+        {/* Floating squares */}
+        {[
+          { x: "10%", y: "20%", size: 40, delay: 0 },
+          { x: "80%", y: "30%", size: 30, delay: 1 },
+          { x: "20%", y: "70%", size: 25, delay: 2 },
+          { x: "70%", y: "60%", size: 35, delay: 0.5 },
+          { x: "50%", y: "40%", size: 20, delay: 1.5 },
+        ].map((sq, i) => (
+          <motion.rect
+            key={i}
+            x={sq.x}
+            y={sq.y}
+            width={sq.size}
+            height={sq.size}
+            fill="url(#squareGlow)"
+            stroke="#fbbf24"
+            strokeWidth="0.5"
+            strokeOpacity="0.1"
+            initial={{ opacity: 0, rotate: 0 }}
+            animate={{
+              opacity: [0, 0.3, 0],
+              rotate: 45,
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              delay: sq.delay,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -80,49 +182,45 @@ export function Hero() {
   });
 
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
   const y = useTransform(scrollYProgress, [0, 0.5], [0, 100]);
 
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden"
+      className="relative min-h-[100dvh] flex items-center overflow-hidden"
     >
       {/* Background */}
-      <div className="absolute inset-0 bg-gray-950" />
+      <div className="absolute inset-0 bg-slate-950" />
 
-      {/* Animated gradient orb */}
-      <GradientOrb />
+      {/* Grid pattern with squares */}
+      <GridPattern />
 
-      {/* Grid pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
-        }}
-      />
+      {/* Gradient orb */}
+      <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-[150px]" />
+      <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-amber-600/5 rounded-full blur-[120px]" />
+
+      {/* Knowledge Graph */}
+      <KnowledgeGraph />
 
       {/* Content */}
       <motion.div
-        style={{ opacity, scale, y }}
-        className="relative z-10 max-w-4xl mx-auto px-6 text-center"
+        style={{ opacity, y }}
+        className="relative z-10 max-w-4xl mx-auto px-6 py-20"
       >
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/20 mb-8"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-8"
         >
           <motion.span
-            className="w-2 h-2 rounded-full bg-violet-400"
+            className="w-2 h-2 rounded-full bg-amber-400"
             animate={{ opacity: [1, 0.5, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
-          <span className="text-sm text-violet-300 font-medium">
-            AI-Powered Learning
+          <span className="text-sm text-amber-300 font-medium">
+            AI-Powered Learning Engine
           </span>
         </motion.div>
 
@@ -131,19 +229,14 @@ export function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="text-[clamp(2.5rem,7vw,5.5rem)] font-bold leading-[1] tracking-tight mb-8"
+          className="text-[clamp(2rem,6vw,4.5rem)] font-bold leading-[1.1] tracking-tight mb-6"
         >
-          <span className="block text-white">Learn anything</span>
-          <motion.span
-            className="block bg-gradient-to-r from-violet-400 via-purple-400 to-violet-400 bg-clip-text text-transparent"
-            animate={{
-              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-            }}
-            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-            style={{ backgroundSize: "200% auto" }}
-          >
-            with AI
-          </motion.span>
+          <span className="block text-white">Stop Memorizing.</span>
+          <span className="block text-white">Start{" "}
+            <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent">
+              Engineering.
+            </span>
+          </span>
         </motion.h1>
 
         {/* Subtitle */}
@@ -151,10 +244,10 @@ export function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="text-lg md:text-xl text-gray-400 max-w-xl mx-auto mb-12 leading-relaxed"
+          className="text-lg md:text-xl text-slate-400 max-w-xl mb-10 leading-relaxed"
         >
-          Personalized courses crafted by AI. Chat with your tutor,
-          take adaptive quizzes, and sync with Notion.
+          Most AI tools just give you the answer. Kortex builds your intuition
+          using adaptive curriculum, visual simulations, and personalized feedback loops.
         </motion.p>
 
         {/* CTA Buttons */}
@@ -162,37 +255,35 @@ export function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="flex flex-col sm:flex-row items-start gap-4"
         >
           <SignedOut>
             <Link
               href="/sign-up"
-              className="group relative inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 font-semibold rounded-full overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/20"
+              className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-amber-500/20"
             >
-              <span className="relative z-10">Start Learning</span>
-              <HiArrowRight className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+              <span>Start Learning</span>
+              <HiArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <Link
-              href="#features"
-              className="px-8 py-4 text-gray-400 hover:text-white font-medium transition-colors duration-300"
+              href="#demo"
+              className="group inline-flex items-center gap-2 px-8 py-4 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 font-medium rounded-xl transition-all duration-300"
             >
-              See how it works
+              <HiPlay className="w-4 h-4" />
+              <span>View the Demo</span>
             </Link>
           </SignedOut>
           <SignedIn>
             <Link
               href="/dashboard"
-              className="group relative inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 font-semibold rounded-full overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/20"
+              className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-amber-500/20"
             >
-              <span className="relative z-10">Go to Dashboard</span>
-              <HiArrowRight className="relative z-10 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+              <span>Go to Dashboard</span>
+              <HiArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </SignedIn>
         </motion.div>
       </motion.div>
-
-      {/* Wave decoration */}
-      <WaveDecoration />
     </section>
   );
 }
