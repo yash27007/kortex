@@ -12,7 +12,7 @@ export default function SignInPage() {
           appearance={{
             elements: {
               formButtonPrimary:
-                "bg-violet-600 hover:bg-violet-700 text-sm normal-case",
+                "bg-amber-600 hover:bg-amber-700 text-sm normal-case",
               card: "bg-gray-800/50 backdrop-blur-xl border border-gray-700",
               headerTitle: "text-white",
               headerSubtitle: "text-gray-400",
@@ -21,8 +21,8 @@ export default function SignInPage() {
               formFieldLabel: "text-gray-300",
               formFieldInput:
                 "bg-gray-700 border-gray-600 text-white placeholder:text-gray-500",
-              footerActionLink: "text-violet-400 hover:text-violet-300",
-              identityPreviewEditButton: "text-violet-400",
+              footerActionLink: "text-amber-400 hover:text-amber-300",
+              identityPreviewEditButton: "text-amber-400",
             },
           }}
         />

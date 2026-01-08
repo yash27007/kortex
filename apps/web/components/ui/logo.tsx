@@ -114,7 +114,7 @@ export function Logo({ size = "md", animated = true }: LogoProps) {
       </motion.svg>
 
       {/* Text */}
-      <span className={`${textSizes[size]} font-bold bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-violet-300 group-hover:via-fuchsia-300 group-hover:to-indigo-300 transition-all`}>
+      <span className={`${textSizes[size]} font-bold bg-gradient-to-r from-amber-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent group-hover:from-amber-300 group-hover:via-fuchsia-300 group-hover:to-indigo-300 transition-all`}>
         Kortex
       </span>
     </Link>

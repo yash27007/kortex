@@ -74,7 +74,7 @@ export async function GET() {
         email: dbUser.email,
         firstName: dbUser.firstName,
         lastName: dbUser.lastName,
-        xp: dbUser.xp,
+        xp: dbUser.totalXp,
         level: dbUser.level,
       },
     });

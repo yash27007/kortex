@@ -18,6 +18,9 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Hide navbar on admin routes
+  const isAdminRoute = pathname?.startsWith('/admin');
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -27,11 +30,15 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  if (isAdminRoute) {
+    return null;
+  }
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out ${scrolled
-          ? "bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50 shadow-lg shadow-black/10"
-          : "bg-transparent border-b border-transparent"
+        ? "bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50 shadow-lg shadow-black/10"
+        : "bg-transparent border-b border-transparent"
         }`}
     >
       <div className="max-w-6xl mx-auto px-6">
@@ -52,8 +59,8 @@ export function Navbar() {
                       key={link.href}
                       href={link.href}
                       className={`relative text-sm font-medium transition-colors duration-300 ${isActive
-                          ? "text-amber-400"
-                          : "text-slate-400 hover:text-white"
+                        ? "text-amber-400"
+                        : "text-slate-400 hover:text-white"
                         }`}
                     >
                       {link.label}

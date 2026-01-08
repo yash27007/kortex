@@ -3,12 +3,12 @@ import { createTRPCRouter, protectedProcedure } from '@/server/trpc/init';
 import { TRPCError } from '@trpc/server';
 
 export const lessonRouter = createTRPCRouter({
-  // Get lesson by ID
+  // Get lesson by ID (for lesson page)
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ lessonId: z.string() }))
     .query(async ({ ctx, input }) => {
       const lesson = await ctx.prisma.lesson.findUnique({
-        where: { id: input.id },
+        where: { id: input.lessonId },
         include: {
           module: {
             include: {
@@ -18,13 +18,6 @@ export const lessonRouter = createTRPCRouter({
                   title: true,
                   slug: true,
                 },
-              },
-            },
-          },
-          quiz: {
-            include: {
-              questions: {
-                orderBy: { order: 'asc' },
               },
             },
           },
@@ -38,25 +31,259 @@ export const lessonRouter = createTRPCRouter({
         });
       }
 
-      // Get user's progress
+      return lesson;
+    }),
+
+  // Get lesson progress
+  getProgress: protectedProcedure
+    .input(z.object({ lessonId: z.string() }))
+    .query(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findFirst({
         where: { clerkId: ctx.userId },
         select: { id: true },
       });
 
-      let progress = null;
-      if (user) {
-        progress = await ctx.prisma.lessonProgress.findUnique({
-          where: {
-            userId_lessonId: {
-              userId: user.id,
-              lessonId: input.id,
+      if (!user) {
+        return null;
+      }
+
+      return ctx.prisma.lessonProgress.findUnique({
+        where: {
+          userId_lessonId: {
+            userId: user.id,
+            lessonId: input.lessonId,
+          },
+        },
+      });
+    }),
+
+  // Get navigation context (prev/next lessons)
+  getNavigation: protectedProcedure
+    .input(z.object({ lessonId: z.string(), courseId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // Get current lesson with module
+      const currentLesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        include: {
+          module: {
+            include: {
+              quiz: {
+                select: { id: true, moduleId: true },
+              },
+              lessons: {
+                select: {
+                  id: true,
+                  order: true,
+                },
+              },
             },
+          },
+        },
+      });
+
+      if (!currentLesson) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Lesson not found',
+        });
+      }
+
+      // Get all lessons in course ordered by module then lesson order
+      const modules = await ctx.prisma.module.findMany({
+        where: { courseId: input.courseId },
+        orderBy: { order: 'asc' },
+        include: {
+          lessons: {
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              title: true,
+              order: true,
+              moduleId: true,
+            },
+          },
+        },
+      });
+
+      // Flatten lessons with module context
+      const allLessons = modules.flatMap((m) =>
+        m.lessons.map((l) => ({
+          ...l,
+          moduleOrder: m.order,
+        }))
+      );
+
+      // Find current lesson index
+      const currentIndex = allLessons.findIndex((l) => l.id === input.lessonId);
+
+      // Get prev/next
+      const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+      const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+      // Check if this is the last lesson in the module (quiz trigger)
+      const moduleLessons = currentLesson.module.lessons;
+      const isLastInModule = moduleLessons?.length
+        ? currentLesson.order === moduleLessons.length
+        : false;
+
+      return {
+        prevLesson,
+        nextLesson,
+        currentModule: {
+          id: currentLesson.module.id,
+          title: currentLesson.module.title,
+        },
+        quiz: isLastInModule ? currentLesson.module.quiz : null,
+        isLastInModule,
+      };
+    }),
+
+  // Mark lesson complete
+  markComplete: protectedProcedure
+    .input(z.object({ lessonId: z.string(), courseId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findFirst({
+        where: { clerkId: ctx.userId },
+      });
+
+      if (!user) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      // Get lesson with module info
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        include: {
+          module: {
+            include: {
+              lessons: { select: { id: true } },
+              quiz: { select: { id: true } },
+            },
+          },
+        },
+      });
+
+      if (!lesson) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Lesson not found',
+        });
+      }
+
+      // Check if already completed
+      const existingProgress = await ctx.prisma.lessonProgress.findUnique({
+        where: {
+          userId_lessonId: {
+            userId: user.id,
+            lessonId: input.lessonId,
+          },
+        },
+      });
+
+      if (existingProgress?.status === 'COMPLETED') {
+        return {
+          xpAwarded: 0,
+          moduleComplete: false,
+          alreadyCompleted: true,
+        };
+      }
+
+      // Mark lesson complete
+      await ctx.prisma.lessonProgress.upsert({
+        where: {
+          userId_lessonId: {
+            userId: user.id,
+            lessonId: input.lessonId,
+          },
+        },
+        update: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          xpAwarded: lesson.xpReward,
+        },
+        create: {
+          userId: user.id,
+          lessonId: input.lessonId,
+          status: 'COMPLETED',
+          startedAt: new Date(),
+          completedAt: new Date(),
+          xpAwarded: lesson.xpReward,
+        },
+      });
+
+      // Award XP to user
+      await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          totalXp: { increment: lesson.xpReward },
+          lastActiveAt: new Date(),
+        },
+      });
+
+      // Update enrollment XP
+      await ctx.prisma.enrollment.updateMany({
+        where: {
+          userId: user.id,
+          courseId: input.courseId,
+        },
+        data: {
+          totalXpEarned: { increment: lesson.xpReward },
+          lastAccessedAt: new Date(),
+        },
+      });
+
+      // Check if all lessons in module are complete
+      const moduleLessonIds = lesson.module.lessons.map((l) => l.id);
+      const completedLessons = await ctx.prisma.lessonProgress.count({
+        where: {
+          userId: user.id,
+          lessonId: { in: moduleLessonIds },
+          status: 'COMPLETED',
+        },
+      });
+
+      const moduleComplete = completedLessons === moduleLessonIds.length;
+
+      // Find next lesson and update enrollment position
+      const modules = await ctx.prisma.module.findMany({
+        where: { courseId: input.courseId },
+        orderBy: { order: 'asc' },
+        include: {
+          lessons: {
+            orderBy: { order: 'asc' },
+            select: { id: true },
+          },
+        },
+      });
+
+      const allLessons = modules.flatMap((m) =>
+        m.lessons.map((l) => ({ ...l, moduleId: m.id }))
+      );
+      const currentIndex = allLessons.findIndex((l) => l.id === input.lessonId);
+      const nextLesson = allLessons[currentIndex + 1];
+
+      if (nextLesson) {
+        await ctx.prisma.enrollment.updateMany({
+          where: {
+            userId: user.id,
+            courseId: input.courseId,
+          },
+          data: {
+            currentLessonId: nextLesson.id,
+            currentModuleId: nextLesson.moduleId,
+            completedLessons: { increment: 1 },
           },
         });
       }
 
-      return { lesson, progress };
+      return {
+        xpAwarded: lesson.xpReward,
+        moduleComplete,
+        alreadyCompleted: false,
+      };
     }),
 
   // Start a lesson
@@ -84,15 +311,11 @@ export const lessonRouter = createTRPCRouter({
         },
         update: {
           status: 'IN_PROGRESS',
-          lastAccessedAt: new Date(),
-          startedAt: undefined, // Don't update if already started
         },
         create: {
           userId: user.id,
           lessonId: input.lessonId,
           status: 'IN_PROGRESS',
-          startedAt: new Date(),
-          lastAccessedAt: new Date(),
         },
       });
 
@@ -169,39 +392,26 @@ export const lessonRouter = createTRPCRouter({
         update: {
           status: 'COMPLETED',
           completedAt: new Date(),
-          lastAccessedAt: new Date(),
         },
         create: {
           userId: user.id,
           lessonId: input.lessonId,
           status: 'COMPLETED',
-          startedAt: new Date(),
           completedAt: new Date(),
-          lastAccessedAt: new Date(),
         },
       });
 
       // Award XP
       const oldLevel = user.level;
-      const newXP = user.xp + lesson.xpReward;
+      const newXP = user.totalXp + lesson.xpReward;
       const newLevel = calculateLevel(newXP);
 
       await ctx.prisma.user.update({
         where: { id: user.id },
         data: {
-          xp: newXP,
+          totalXp: newXP,
           level: newLevel,
           lastActiveAt: new Date(),
-        },
-      });
-
-      // Create XP history entry
-      await ctx.prisma.xPHistory.create({
-        data: {
-          userId: user.id,
-          amount: lesson.xpReward,
-          reason: 'LESSON_COMPLETE',
-          metadata: { lessonId: lesson.id, lessonTitle: lesson.title },
         },
       });
 
@@ -244,17 +454,12 @@ export const lessonRouter = createTRPCRouter({
             lessonId: input.lessonId,
           },
         },
-        update: {
-          timeSpent: { increment: input.seconds },
-          lastAccessedAt: new Date(),
-        },
+        update: {},
         create: {
           userId: user.id,
           lessonId: input.lessonId,
           status: 'IN_PROGRESS',
-          timeSpent: input.seconds,
-          startedAt: new Date(),
-          lastAccessedAt: new Date(),
+          // time tracking fields removed from schema
         },
       });
 

@@ -11,7 +11,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
             <Link href="/" className="text-2xl font-bold text-white">
-              <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 to-purple-400 bg-clip-text text-transparent">
                 Kortex
               </span>
             </Link>
@@ -55,14 +55,14 @@ export function Header() {
                 </Button>
               </Link>
               <Link href="/sign-up">
-                <Button className="bg-violet-600 hover:bg-violet-700 text-white">
+                <Button className="bg-amber-600 hover:bg-amber-700 text-white">
                   Get Started
                 </Button>
               </Link>
             </SignedOut>
             <SignedIn>
               <Link href="/dashboard">
-                <Button className="bg-violet-600 hover:bg-violet-700 text-white">
+                <Button className="bg-amber-600 hover:bg-amber-700 text-white">
                   Dashboard
                 </Button>
               </Link>

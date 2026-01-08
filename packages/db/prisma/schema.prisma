@@ -1,3 +1,7 @@
+// Kortex Database Schema
+// Course Hierarchy: Course → Module → Lesson
+// Gamification: XP, Streaks, Levels, Leaderboard
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -5,4 +9,327 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ==========================================
+// USER & AUTHENTICATION
+// ==========================================
+
+model User {
+  id        String  @id @default(cuid())
+  clerkId   String  @unique
+  email     String  @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+
+  // Gamification
+  totalXp       Int      @default(0)
+  level         Int      @default(1)
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  lastActiveAt  DateTime @default(now())
+
+  // Relations
+  enrollments      Enrollment[]
+  lessonProgress   LessonProgress[]
+  quizAttempts     QuizAttempt[]
+  generatedCourses Course[]         @relation("GeneratedBy")
+  badges           UserBadge[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// COURSE STRUCTURE
+// ==========================================
+
+model Course {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  description String     @db.Text
+  imageUrl    String?
+  category    String?
+  difficulty  Difficulty @default(BEGINNER)
+
+  // Course Outcomes (MIT/IIT style)
+  courseOutcomes String[] @default([])
+  prerequisites  String[] @default([])
+  targetAudience String?
+  estimatedHours Int      @default(10)
+
+  isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
+
+  // Who generated this course
+  generatedById String?
+  generatedBy   User?   @relation("GeneratedBy", fields: [generatedById], references: [id])
+
+  // Relations
+  modules     Module[]
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([category])
+  @@index([isPublished])
+}
+
+model Module {
+  id          String  @id @default(cuid())
+  courseId    String
+  title       String
+  description String? @db.Text
+  order       Int // 1, 2, 3... (sequential order)
+
+  // Bloom's Taxonomy Logic
+  bloomLevel    BloomLevel
+  courseOutcome String // "Students will be able to define DFA..."
+
+  // Estimated duration in minutes
+  estimatedMinutes Int @default(60)
+
+  // Relations
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+  quiz    Quiz? // The "Gatekeeper" Quiz at end of module
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, order])
+  @@index([courseId])
+}
+
+model Lesson {
+  id          String  @id @default(cuid())
+  moduleId    String
+  title       String
+  description String?
+  order       Int // Order within the module
+
+  // Content
+  mdxContent String  @db.Text
+  videoUrl   String?
+  visualAid  Json? // JSON schema for client-side canvas rendering (replaces Manim)
+
+  // Metadata
+  type       LessonType @default(TEXT)
+  duration   Int        @default(10) // Minutes
+  xpReward   Int        @default(50)
+  bloomLevel BloomLevel @default(UNDERSTAND)
+
+  // Key concepts for RAG
+  keyConcepts String[] @default([])
+
+  // Relations
+  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([moduleId, order])
+  @@index([moduleId])
+}
+
+// ==========================================
+// QUIZ SYSTEM
+// ==========================================
+
+model Quiz {
+  id          String  @id @default(cuid())
+  moduleId    String  @unique
+  title       String  @default("Module Assessment")
+  description String?
+
+  // Quiz settings
+  questions    Json // Array of QuizQuestion objects
+  passingScore Int  @default(80) // Percentage required to pass
+  timeLimit    Int? // Minutes (null = no limit)
+  maxAttempts  Int  @default(3)
+
+  // Rewards
+  xpReward Int @default(100)
+
+  // Relations
+  module   Module        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  attempts QuizAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model QuizAttempt {
+  id     String @id @default(cuid())
+  quizId String
+  userId String
+
+  // Results
+  score     Int // Percentage score (0-100)
+  passed    Boolean
+  answers   Json // User's answers
+  timeTaken Int? // Seconds
+
+  // XP awarded (0 if failed or already passed)
+  xpAwarded Int @default(0)
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([quizId, userId])
+}
+
+// ==========================================
+// PROGRESS TRACKING
+// ==========================================
+
+model Enrollment {
+  id       String @id @default(cuid())
+  userId   String
+  courseId String
+
+  // Strict Progression Tracking
+  currentModuleId String? // The module user is currently on
+  currentLessonId String? // The lesson user is currently on
+
+  // Progress stats
+  completedModules Int @default(0)
+  completedLessons Int @default(0)
+  totalXpEarned    Int @default(0)
+  progressPercent  Int @default(0) // 0-100
+
+  // Status
+  status EnrollmentStatus @default(ACTIVE)
+
+  // Timestamps
+  startedAt      DateTime  @default(now())
+  lastAccessedAt DateTime  @default(now())
+  completedAt    DateTime?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id       String @id @default(cuid())
+  userId   String
+  lessonId String
+
+  // Progress
+  status   ProgressStatus @default(NOT_STARTED)
+  progress Int            @default(0) // 0-100 for video progress
+
+  // XP
+  xpAwarded Int @default(0)
+
+  // Timestamps
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+// ==========================================
+// GAMIFICATION
+// ==========================================
+
+model Badge {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  imageUrl    String
+
+  // Requirements
+  requirement BadgeRequirement
+  threshold   Int // e.g., 10 for "Complete 10 lessons"
+  xpBonus     Int              @default(0)
+
+  // Relations
+  users UserBadge[]
+
+  createdAt DateTime @default(now())
+}
+
+model UserBadge {
+  id      String @id @default(cuid())
+  userId  String
+  badgeId String
+
+  earnedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum BloomLevel {
+  REMEMBER
+  UNDERSTAND
+  APPLY
+  ANALYZE
+  EVALUATE
+  CREATE
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum LessonType {
+  TEXT
+  VIDEO
+  INTERACTIVE
+  QUIZ
+  PROJECT
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  DROPPED
+}
+
+enum BadgeRequirement {
+  LESSONS_COMPLETED
+  MODULES_COMPLETED
+  COURSES_COMPLETED
+  TOTAL_XP
+  STREAK_DAYS
+  QUIZ_PERFECT_SCORE
+  FIRST_COURSE
+  FIRST_LESSON
 }

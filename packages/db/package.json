@@ -6,7 +6,9 @@
   "scripts": {
     "generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "bun run seed.ts",
+    "db:reset": "prisma db push --force-reset && bun run seed.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

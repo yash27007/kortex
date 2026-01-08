@@ -3,6 +3,8 @@ import { baseProcedure, createTRPCRouter } from '@/server/trpc/init';
 import { userRouter } from './user';
 import { courseRouter } from './course';
 import { lessonRouter } from './lesson';
+import { quizRouter } from './quiz';
+import { adminRouter } from './admin';
 
 export const appRouter = createTRPCRouter({
   // Health check
@@ -14,6 +16,8 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   course: courseRouter,
   lesson: lessonRouter,
+  quiz: quizRouter,
+  admin: adminRouter,
 });
 
 // Export type definition of API

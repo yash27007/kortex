@@ -5,6 +5,7 @@ import { TRPCReactProvider } from "@/server/trpc/client";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Navbar } from "@/components/layout";
 import { SmoothScrollProvider } from "@/lib/providers/smooth-scroll";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({
             <SmoothScrollProvider>
               <Navbar />
               {children}
+              <Toaster theme="dark" position="top-right" />
             </SmoothScrollProvider>
           </TRPCReactProvider>
         </body>

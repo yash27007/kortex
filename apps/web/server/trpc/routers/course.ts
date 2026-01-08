@@ -44,6 +44,50 @@ export const courseRouter = createTRPCRouter({
       return { courses, nextCursor };
     }),
 
+  // Get course structure for sidebar (with modules and lessons)
+  getStructure: protectedProcedure
+    .input(z.object({ courseId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const course = await ctx.prisma.course.findUnique({
+        where: { id: input.courseId },
+        include: {
+          modules: {
+            orderBy: { order: 'asc' },
+            include: {
+              lessons: {
+                orderBy: { order: 'asc' },
+                select: {
+                  id: true,
+                  title: true,
+                  order: true,
+                  duration: true,
+                  type: true,
+                  xpReward: true,
+                },
+              },
+              quiz: {
+                select: {
+                  id: true,
+                  title: true,
+                  passingScore: true,
+                  xpReward: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!course) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Course not found',
+        });
+      }
+
+      return course;
+    }),
+
   // Get course by slug
   getBySlug: baseProcedure
     .input(z.object({ slug: z.string() }))
@@ -166,7 +210,7 @@ export const courseRouter = createTRPCRouter({
       return enrollment;
     }),
 
-  // Get course progress
+  // Get course progress (enhanced for course player)
   getProgress: protectedProcedure
     .input(z.object({ courseId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -176,10 +220,7 @@ export const courseRouter = createTRPCRouter({
       });
 
       if (!user) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'User not found',
-        });
+        return null;
       }
 
       const enrollment = await ctx.prisma.enrollment.findUnique({
@@ -195,36 +236,85 @@ export const courseRouter = createTRPCRouter({
         return null;
       }
 
-      // Get all lessons in course
-      const lessons = await ctx.prisma.lesson.findMany({
-        where: {
-          module: {
-            courseId: input.courseId,
+      // Get all modules in course
+      const modules = await ctx.prisma.module.findMany({
+        where: { courseId: input.courseId },
+        orderBy: { order: 'asc' },
+        include: {
+          lessons: {
+            select: { id: true },
+            orderBy: { order: 'asc' },
+          },
+          quiz: {
+            select: { id: true },
           },
         },
-        select: { id: true },
       });
+
+      // Get all lesson IDs
+      const allLessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id));
 
       // Get completed lessons
       const completedLessons = await ctx.prisma.lessonProgress.findMany({
         where: {
           userId: user.id,
-          lessonId: { in: lessons.map((l) => l.id) },
+          lessonId: { in: allLessonIds },
           status: 'COMPLETED',
         },
         select: { lessonId: true },
       });
 
-      const progress = lessons.length > 0
-        ? Math.round((completedLessons.length / lessons.length) * 100)
+      const completedLessonIds = completedLessons.map((l) => l.lessonId);
+
+      // Get completed quizzes (passed)
+      const passedQuizzes = await ctx.prisma.quizAttempt.findMany({
+        where: {
+          userId: user.id,
+          passed: true,
+          quiz: {
+            module: {
+              courseId: input.courseId,
+            },
+          },
+        },
+        select: {
+          quiz: {
+            select: { moduleId: true },
+          },
+        },
+      });
+
+      // Determine completed modules (all lessons + quiz passed)
+      const completedModuleIds: string[] = [];
+      for (const module of modules) {
+        const moduleLessonIds = module.lessons.map((l) => l.id);
+        const allLessonsComplete = moduleLessonIds.every((id) =>
+          completedLessonIds.includes(id)
+        );
+        const quizPassed = passedQuizzes.some(
+          (q) => q.quiz.moduleId === module.id
+        );
+        
+        // Module is complete if all lessons done AND quiz passed (if quiz exists)
+        if (allLessonsComplete && (!module.quiz || quizPassed)) {
+          completedModuleIds.push(module.id);
+        }
+      }
+
+      const progress = allLessonIds.length > 0
+        ? Math.round((completedLessonIds.length / allLessonIds.length) * 100)
         : 0;
 
       return {
         enrollment,
-        totalLessons: lessons.length,
-        completedLessons: completedLessons.length,
+        currentModuleId: enrollment.currentModuleId,
+        currentLessonId: enrollment.currentLessonId,
+        totalLessons: allLessonIds.length,
+        completedLessons: completedLessonIds.length,
+        totalXpEarned: enrollment.totalXpEarned,
         progress,
-        completedLessonIds: completedLessons.map((l) => l.lessonId),
+        completedLessonIds,
+        completedModuleIds,
       };
     }),
 
