@@ -257,7 +257,15 @@ cd packages/db && bunx prisma db push && cd ../..
 ```
 
 Each service reads its own `.env` file — there is no shared root `.env`
-for application secrets.
+for application secrets. Every `.env.example` below is a real, copyable
+template with accurate variable names and working defaults:
+
+```bash
+cp .env.example .env                                # Inngest Cloud creds, optional for local dev
+cp apps/core/.env.example apps/core/.env
+cp apps/web/.env.example apps/web/.env.local
+cp packages/db/.env.example packages/db/.env
+```
 
 `apps/core/.env`:
 
@@ -276,7 +284,7 @@ for application secrets.
 | `DATABASE_URL` | yes | Points at the Postgres container |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | yes | [Clerk dashboard](https://dashboard.clerk.com) |
 | `INTERNAL_API_SECRET` | yes | Must match `apps/core/.env` |
-| `NEXT_PUBLIC_CORE_API_URL` | no | Defaults to `http://localhost:8000` |
+| `CORE_API_URL` / `FASTAPI_URL` | no | Both default to `http://localhost:8000` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_SECRET` | production only | See [Development notes](#development-notes) — a dev-only insecure default is used if unset |
 
 `packages/db/.env`:
