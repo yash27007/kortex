@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from ..agents import ArchitectAgent, AuthorAgent, QuizmasterAgent
+from ..clients import get_gemini_client
 from ..schemas import (
     CourseStructureInput,
     CourseStructureOutput,
@@ -13,9 +14,63 @@ from ..schemas import (
     ContentGenerationOutput,
     QuizGenerationInput,
     QuizOutput,
+    SuggestionRequest,
+    SuggestionResponse,
 )
+from ..utils.logger import get_logger
 
 router = APIRouter(prefix="/agent", tags=["agents"])
+
+_SUGGESTION_FIELD_DESCRIPTIONS = {
+    "title": "a compelling, specific course title",
+    "description": "a clear, one-to-two sentence course description",
+    "category": "a concise subject category (e.g. Biology, Web Development, History)",
+    "outcome": "a specific, measurable learning outcome starting with 'Students will be able to...'",
+    "targetAudience": "a specific target audience description (e.g. 'undergraduate biology majors')",
+}
+
+
+@router.post("/suggestions", response_model=SuggestionResponse)
+async def get_suggestions(input_data: SuggestionRequest):
+    """
+    Lightweight AI suggestions for course-creation form fields, shown as a
+    dropdown while the admin types. Uses the flash model — this powers live
+    typing assistance, not final content, so speed and cost matter more
+    than depth here.
+    """
+    logger = get_logger("suggestions")
+    try:
+        gemini = get_gemini_client()
+        field_desc = _SUGGESTION_FIELD_DESCRIPTIONS.get(input_data.field, "a suggestion")
+
+        context_lines = [f"{key}: {value}" for key, value in input_data.context.items() if value]
+        context_str = "\n".join(context_lines) if context_lines else "(no other fields filled in yet)"
+
+        prompt = f"""A course creator is writing {field_desc} for an online course and has typed so far: "{input_data.input}"
+
+Other course details filled in so far:
+{context_str}
+
+Suggest 4 improved or alternative versions of {field_desc}. Each suggestion must be concise and directly usable as-is — no explanations, no numbering, just the suggested text itself."""
+
+        result = await gemini.generate_json(
+            prompt=prompt,
+            schema={
+                "type": "object",
+                "properties": {
+                    "suggestions": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["suggestions"],
+            },
+            use_pro=False,
+            temperature=0.8,
+        )
+        return SuggestionResponse(suggestions=(result.get("suggestions") or [])[:5])
+    except Exception as e:
+        # Suggestions are a nice-to-have while typing — degrade to an empty
+        # list rather than surfacing an error in the form.
+        logger.error("Failed to generate suggestions", exc=e)
+        return SuggestionResponse(suggestions=[])
 
 
 # Response wrapper

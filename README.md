@@ -306,15 +306,6 @@ account.
 
 This is an honest list, kept up to date rather than aspirational:
 
-- **Admin "Regenerate module" is broken.** It calls a core API route that
-  does not exist (`POST /agent/module`). Fails with a toast, does not
-  corrupt any data.
-- **AI field suggestions during course creation are broken** for the same
-  reason (`POST /agent/suggestions` does not exist). Fails silently to an
-  empty suggestion list.
-- **The admin module editor's inline title/description "Save" is a stub.**
-  It closes the edit form and shows a success toast without persisting a
-  change.
 - **No email or reminder system.** Scheduled study reminders were planned
   but never started.
 - **No video generation (Manim).** Diagrams are Mermaid only, by design —
@@ -343,6 +334,11 @@ app refuses to start without these set explicitly — see
 ## License
 
 Kortex is free software, licensed under the
-[GNU General Public License v3.0](LICENSE) or later. You are free to use,
-study, modify, and redistribute it, including commercially, as long as
-derivative works remain licensed under the GPL.
+[GNU Affero General Public License v3.0](LICENSE) or later. You are free
+to use, study, modify, and redistribute it, including commercially. The
+"Affero" clause matters here specifically because Kortex is a hosted web
+app: if you run a modified version as a network service, AGPL requires you
+to offer your users the complete corresponding source of that modified
+version — even though you never handed them a copy of the software
+directly. Plain GPL does not have that requirement; AGPL exists precisely
+to close that gap for server-side software.

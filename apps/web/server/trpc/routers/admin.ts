@@ -525,56 +525,83 @@ export const adminRouter = createTRPCRouter({
       };
     }),
 
-  // Regenerate specific module with AI
+  // Regenerate a module's lesson content with AI.
+  //
+  // This re-writes each existing lesson's MDX content — it does not change
+  // the module's title, description, or lesson list/order. There used to
+  // be a POST to a core API route (/agent/module) that never existed;
+  // rather than build a whole second course-structure-mutation pipeline,
+  // this reuses the same lesson.generate Inngest event the Author already
+  // handles for initial course generation, fired once per existing lesson.
   regenerateModule: adminProcedure
     .input(
       z.object({
         courseId: z.string(),
-        moduleId: z.string().optional(),
-        moduleTitle: z.string().optional(),
+        moduleId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const course = await ctx.prisma.course.findUnique({
-        where: { id: input.courseId },
+      const module = await ctx.prisma.module.findUnique({
+        where: { id: input.moduleId },
         include: {
-          modules: true,
+          lessons: { orderBy: { order: 'asc' } },
         },
       });
 
-      if (!course) {
+      if (!module || module.courseId !== input.courseId) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'Course not found',
+          message: 'Module not found',
         });
       }
 
-      // Trigger AI module generation
-      try {
-        const coreApiUrl = process.env.CORE_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${coreApiUrl}/agent/module`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            course_id: input.courseId,
-            module_id: input.moduleId,
-            module_title: input.moduleTitle,
-            course_title: course.title,
-            course_description: course.description,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to regenerate module');
-        }
-
-        return { success: true, message: 'Module regeneration started' };
-      } catch (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to regenerate module',
-        });
+      if (module.lessons.length === 0) {
+        return { success: true, message: 'No lessons to regenerate', lessonCount: 0 };
       }
+
+      await Promise.all(
+        module.lessons.map((lesson) =>
+          sendInngestEvent('lesson.generate', {
+            course_id: module.courseId,
+            module_id: module.id,
+            module_title: module.title,
+            lesson_id: lesson.id,
+            title: lesson.title,
+            description: lesson.description ?? '',
+            bloom_level: lesson.bloomLevel.toLowerCase(),
+            duration_minutes: lesson.duration,
+            learning_objectives: [],
+            key_concepts: lesson.keyConcepts,
+          })
+        )
+      );
+
+      return {
+        success: true,
+        message: `Regenerating content for ${module.lessons.length} lesson(s)`,
+        lessonCount: module.lessons.length,
+      };
+    }),
+
+  // Update a module's title/description (admin inline edit).
+  updateModule: adminProcedure
+    .input(
+      z.object({
+        moduleId: z.string(),
+        title: z.string().min(1),
+        description: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const module = await ctx.prisma.module.update({
+        where: { id: input.moduleId },
+        data: {
+          title: input.title,
+          description: input.description,
+        },
+      });
+
+      return module;
     }),
 
   // ==========================================

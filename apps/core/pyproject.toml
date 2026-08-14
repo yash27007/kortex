@@ -3,7 +3,7 @@ name = "core"
 version = "0.1.0"
 description = "The ai engine for the kortex app"
 readme = "README.md"
-license = "GPL-3.0-or-later"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.2",

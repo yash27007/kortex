@@ -46,8 +46,8 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
   const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   const regenerateModuleMutation = useMutation(api.admin.regenerateModule.mutationOptions({
-    onSuccess: () => {
-      toast.success("Module regeneration started. This may take a few minutes.");
+    onSuccess: (data) => {
+      toast.success(`${data.message}. This may take a few minutes.`);
       onUpdate();
     },
     onError: (error) => {
@@ -55,12 +55,26 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
     },
   }));
 
+  const updateModuleMutation = useMutation(api.admin.updateModule.mutationOptions({
+    onSuccess: () => {
+      toast.success("Module updated");
+      setIsEditing(false);
+      onUpdate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update module");
+    },
+  }));
+
   const handleRegenerate = () => {
-    if (confirm(`Regenerate module "${module.title}" with AI? This will recreate all lessons and content.`)) {
+    if (
+      confirm(
+        `Regenerate content for all ${module.lessons.length} lesson(s) in "${module.title}"? Lesson titles and order stay the same — only the written content is rewritten.`
+      )
+    ) {
       regenerateModuleMutation.mutate({
         courseId,
         moduleId: module.id,
-        moduleTitle: module.title,
       });
     }
   };
@@ -89,15 +103,17 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
                   <Button
                     size="sm"
                     onClick={() => {
-                      // TODO: Implement update mutation
-                      setIsEditing(false);
-                      toast.success("Module updated");
-                      onUpdate();
+                      updateModuleMutation.mutate({
+                        moduleId: module.id,
+                        title,
+                        description: description || null,
+                      });
                     }}
+                    disabled={updateModuleMutation.isPending || !title.trim()}
                     className="bg-amber-600 hover:bg-amber-700"
                   >
                     <HiCheck className="w-4 h-4 mr-1" />
-                    Save
+                    {updateModuleMutation.isPending ? "Saving…" : "Save"}
                   </Button>
                   <Button
                     size="sm"
