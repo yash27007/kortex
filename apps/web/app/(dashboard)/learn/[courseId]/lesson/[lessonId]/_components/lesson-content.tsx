@@ -10,7 +10,9 @@ import {
   HiCheck,
   HiLightBulb,
   HiExclamationTriangle,
+  HiInformationCircle,
 } from "react-icons/hi2";
+import { MermaidDiagram } from "@/components/mdx/mermaid-diagram";
 
 interface LessonContentProps {
   content: string;
@@ -46,6 +48,9 @@ function parseMarkdown(content: string): React.ReactNode[] {
   let listType: "ul" | "ol" = "ul";
   let inTable = false;
   let tableRows: string[][] = [];
+  let inCallout = false;
+  let calloutType: "info" | "warning" | "tip" = "info";
+  let calloutContent: string[] = [];
   let key = 0;
 
   const flushParagraph = () => {
@@ -128,13 +133,19 @@ function parseMarkdown(content: string): React.ReactNode[] {
     if (trimmedLine.startsWith("```")) {
       if (inCodeBlock) {
         // End of code block
-        elements.push(
-          <CodeBlock
-            key={key++}
-            code={codeBlockContent.join("\n")}
-            language={codeBlockLanguage || "text"}
-          />
-        );
+        if (codeBlockLanguage.toLowerCase() === "mermaid") {
+          elements.push(
+            <MermaidDiagram key={key++} code={codeBlockContent.join("\n")} />
+          );
+        } else {
+          elements.push(
+            <CodeBlock
+              key={key++}
+              code={codeBlockContent.join("\n")}
+              language={codeBlockLanguage || "text"}
+            />
+          );
+        }
         codeBlockContent = [];
         inCodeBlock = false;
       } else {
@@ -150,6 +161,49 @@ function parseMarkdown(content: string): React.ReactNode[] {
 
     if (inCodeBlock) {
       codeBlockContent.push(line);
+      continue;
+    }
+
+    // Callout blocks: <Callout type="info|warning|tip">...</Callout>
+    if (inCallout) {
+      const closeIdx = trimmedLine.indexOf("</Callout>");
+      if (closeIdx !== -1) {
+        const text = trimmedLine.slice(0, closeIdx).trim();
+        if (text) calloutContent.push(text);
+        elements.push(
+          <Callout key={key++} type={calloutType}>
+            {parseInline(calloutContent.join(" ").trim())}
+          </Callout>
+        );
+        calloutContent = [];
+        inCallout = false;
+      } else if (trimmedLine) {
+        calloutContent.push(trimmedLine);
+      }
+      continue;
+    }
+
+    const calloutOpenMatch = trimmedLine.match(
+      /^<Callout(?:\s+type=["'](info|warning|tip)["'])?\s*>(.*)$/i
+    );
+    if (calloutOpenMatch) {
+      flushParagraph();
+      flushList();
+      flushTable();
+      calloutType = (calloutOpenMatch[1]?.toLowerCase() as "info" | "warning" | "tip") || "info";
+      const rest = calloutOpenMatch[2] ?? "";
+      const closeIdx = rest.indexOf("</Callout>");
+      if (closeIdx !== -1) {
+        const text = rest.slice(0, closeIdx).trim();
+        elements.push(
+          <Callout key={key++} type={calloutType}>
+            {parseInline(text)}
+          </Callout>
+        );
+      } else {
+        inCallout = true;
+        if (rest.trim()) calloutContent.push(rest.trim());
+      }
       continue;
     }
 
@@ -430,7 +484,36 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   );
 }
 
+// Highlighted aside for an important point — matches AI-authored
+// <Callout type="info|warning|tip"> tags in lesson MDX source.
+function Callout({
+  children,
+  type = "info",
+}: {
+  children: React.ReactNode;
+  type?: "info" | "warning" | "tip";
+}) {
+  const styles = {
+    info: "bg-blue-500/10 border-blue-500/30",
+    warning: "bg-amber-500/10 border-amber-500/30",
+    tip: "bg-emerald-500/10 border-emerald-500/30",
+  };
 
+  const icons = {
+    info: <HiInformationCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />,
+    warning: <HiExclamationTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />,
+    tip: <HiLightBulb className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />,
+  };
+
+  return (
+    <div className={`my-4 p-4 rounded-lg border ${styles[type]}`}>
+      <div className="flex items-start gap-3">
+        {icons[type]}
+        <div className="flex-1 text-slate-200">{children}</div>
+      </div>
+    </div>
+  );
+}
 
 
 

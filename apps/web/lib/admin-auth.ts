@@ -1,11 +1,45 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'your-secret-key-change-in-production';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@kortex.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+// Fails loudly in production instead of silently falling back to a
+// guessable default — a hardcoded admin password/JWT secret checked into
+// a public repo is a real backdoor for anyone who deploys without setting
+// these. Development keeps a documented, clearly-insecure default so a
+// fresh clone still runs without extra setup.
+//
+// Evaluated lazily (called from inside each function below, not at module
+// load) so `next build`'s route-collection pass — which imports this module
+// under NODE_ENV=production without ever invoking the handlers — doesn't
+// trip the production check itself. The real check is what fires when a
+// request actually reaches the admin login route at runtime.
+function requireAdminEnv(name: string, devFallback: string): string {
+  const value = process.env[name];
+  if (value) return value;
 
-const secretKey = new TextEncoder().encode(ADMIN_SECRET);
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      `${name} must be set in production — refusing to start with an insecure default.`
+    );
+  }
+
+  console.warn(
+    `[admin-auth] ${name} is not set. Using an insecure development-only default — set it in apps/web/.env.local before deploying.`
+  );
+  return devFallback;
+}
+
+function getAdminSecret(): string {
+  return requireAdminEnv('ADMIN_SECRET', 'dev-only-insecure-secret-change-me');
+}
+
+function getAdminEmail(): string {
+  return requireAdminEnv('ADMIN_EMAIL', 'admin@kortex.com');
+}
+
+function getAdminPassword(): string {
+  return requireAdminEnv('ADMIN_PASSWORD', 'admin123');
+}
+
 const COOKIE_NAME = 'admin-session';
 
 export interface AdminSession {
@@ -19,6 +53,7 @@ export interface AdminSession {
  */
 export async function createAdminSession(email: string): Promise<string> {
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  const secretKey = new TextEncoder().encode(getAdminSecret());
 
   const token = await new SignJWT({ email, isAdmin: true, expiresAt })
     .setProtectedHeader({ alg: 'HS256' })
@@ -34,6 +69,7 @@ export async function createAdminSession(email: string): Promise<string> {
  */
 export async function verifyAdminSession(token: string): Promise<AdminSession | null> {
   try {
+    const secretKey = new TextEncoder().encode(getAdminSecret());
     const { payload } = await jwtVerify(token, secretKey);
     
     if (payload.exp && payload.exp * 1000 < Date.now()) {
@@ -94,7 +130,7 @@ export async function clearAdminSession(): Promise<void> {
  * Validate admin credentials
  */
 export function validateAdminCredentials(email: string, password: string): boolean {
-  return email === ADMIN_EMAIL && password === ADMIN_PASSWORD;
+  return email === getAdminEmail() && password === getAdminPassword();
 }
 
 /**

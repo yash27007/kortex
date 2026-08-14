@@ -2,10 +2,9 @@
 Kortex AI Core - FastAPI Backend
 
 The Intelligence Worker for Kortex. This service handles:
-- Agent A: Course Structure Generation (The Architect) - via Inngest
-- Agent B: Content Generation with Manim (The Author) - via Inngest
-- Agent C: Socratic Tutoring Chat (The Tutor) - real-time FastAPI
-- Agent D: Personalized Quiz Generation (The Quizmaster) - real-time FastAPI
+- The Architect: course structure generation, following Bloom's Taxonomy - via Inngest
+- The Author: MDX lesson content generation, with inline Mermaid diagrams - via Inngest
+- The Quizmaster: gatekeeper quiz generation per module - real-time FastAPI
 
 Long-running workflows (course generation) use Inngest for:
 - Reliability (automatic retries)
@@ -19,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import agents_router, chat_router, storage_router, web_search_logs_router
+from .routers import agents_router, storage_router, web_search_logs_router
 from .inngest_client import create_inngest_serve
 from .utils.logger import get_logger
 
@@ -104,7 +103,6 @@ app.add_middleware(
 
 # Include routers
 app.include_router(agents_router)
-app.include_router(chat_router)
 app.include_router(storage_router)
 app.include_router(web_search_logs_router)
 

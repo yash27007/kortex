@@ -14,7 +14,10 @@ services:
       POSTGRES_PASSWORD: kortex_dev_password
       POSTGRES_DB: kortex_dev
     ports:
-      - "5432:5432"
+      # Host-side 5433, not 5432: this machine already has a native Postgres
+      # bound to 127.0.0.1:5432 from outside this project, which would
+      # otherwise shadow the container from within this WSL distro.
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

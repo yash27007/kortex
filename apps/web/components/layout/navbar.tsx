@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { HiMenu, HiX } from "react-icons/hi";
 
 const navLinks = [
@@ -50,7 +50,7 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <SignedIn>
+            <Show when="signed-in">
               <nav className="flex items-center gap-6">
                 {navLinks.map((link) => {
                   const isActive = pathname === link.href;
@@ -75,11 +75,11 @@ export function Navbar() {
                   );
                 })}
               </nav>
-            </SignedIn>
+            </Show>
 
             {/* Auth buttons */}
             <div className="flex items-center gap-4">
-              <SignedOut>
+              <Show when="signed-out">
                 <Link
                   href="/sign-in"
                   className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
@@ -92,8 +92,8 @@ export function Navbar() {
                 >
                   Get Started
                 </Link>
-              </SignedOut>
-              <SignedIn>
+              </Show>
+              <Show when="signed-in">
                 <UserButton
                   appearance={{
                     elements: {
@@ -101,7 +101,7 @@ export function Navbar() {
                     },
                   }}
                 />
-              </SignedIn>
+              </Show>
             </div>
           </div>
 
@@ -130,7 +130,7 @@ export function Navbar() {
             className="md:hidden overflow-hidden border-t border-slate-800/50 bg-slate-950/95 backdrop-blur-xl"
           >
             <div className="px-6 py-4 space-y-1">
-              <SignedIn>
+              <Show when="signed-in">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
@@ -153,8 +153,8 @@ export function Navbar() {
                     <span className="text-sm text-slate-400">Account</span>
                   </div>
                 </div>
-              </SignedIn>
-              <SignedOut>
+              </Show>
+              <Show when="signed-out">
                 <Link
                   href="/sign-in"
                   onClick={() => setMobileMenuOpen(false)}
@@ -169,7 +169,7 @@ export function Navbar() {
                 >
                   Get Started
                 </Link>
-              </SignedOut>
+              </Show>
             </div>
           </motion.div>
         )}

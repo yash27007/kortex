@@ -113,9 +113,10 @@ model Lesson {
   order       Int // Order within the module
 
   // Content
+  // Diagrams (Mermaid) and declarative visuals (tables, callouts) are
+  // authored inline in mdxContent rather than as a separate JSON channel.
   mdxContent String  @db.Text
   videoUrl   String?
-  visualAid  Json? // JSON schema for client-side canvas rendering (replaces Manim)
 
   // Metadata
   type       LessonType @default(TEXT)

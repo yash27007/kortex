@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createTRPCRouter, adminProcedure } from '@/server/trpc/init';
 import { TRPCError } from '@trpc/server';
 import { subDays, format } from 'date-fns';
+import { sendInngestEvent } from '@/lib/inngest-events';
 
 export const adminRouter = createTRPCRouter({
   // Get AI-powered suggestions for course creation
@@ -320,6 +321,35 @@ export const adminRouter = createTRPCRouter({
       return course;
     }),
 
+  // Get a single lesson's generated content for admin preview.
+  // Kept separate from getCourseById so the course-detail page never has
+  // to pull every lesson's full MDX body just to render the module list.
+  getLessonContent: adminProcedure
+    .input(z.object({ lessonId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          mdxContent: true,
+          bloomLevel: true,
+          duration: true,
+          keyConcepts: true,
+        },
+      });
+
+      if (!lesson) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Lesson not found',
+        });
+      }
+
+      return lesson;
+    }),
+
   // Update course publish status
   toggleCoursePublish: adminProcedure
     .input(z.object({ courseId: z.string(), isPublished: z.boolean() }))
@@ -395,51 +425,26 @@ export const adminRouter = createTRPCRouter({
       // Trigger AI generation via Inngest event
       try {
         const inngestEventKey = process.env.INNGEST_EVENT_KEY;
-        const inngestUrl = process.env.INNGEST_URL || 'http://localhost:8288';
-        
         const eventData = {
-          name: 'course.create',
-          data: {
-            course_id: course.id,
-            title: input.title,
-            description: input.description,
-            target_audience: input.targetAudience || 'undergraduate students',
-            duration_weeks: Math.ceil(input.estimatedHours / 5),
-            pdf_urls: input.materials,
-            youtube_urls: input.youtubeLinks,
-            course_outcomes: input.courseOutcomes,
-          },
+          course_id: course.id,
+          title: input.title,
+          description: input.description,
+          target_audience: input.targetAudience || 'undergraduate students',
+          duration_weeks: Math.ceil(input.estimatedHours / 5),
+          pdf_urls: input.materials,
+          youtube_urls: input.youtubeLinks,
+          course_outcomes: input.courseOutcomes,
         };
-        
-        console.log('[Course Creation] Triggering Inngest event:', {
-          url: `${inngestUrl}/api/v1/events`,
-          event: eventData.name,
+
+        console.log('[Course Creation] Triggering course.create event:', {
           course_id: course.id,
           pdf_count: input.materials.length,
           youtube_count: input.youtubeLinks.length,
         });
-        
-        if (inngestEventKey || process.env.NODE_ENV === 'development') {
-          // Send event to Inngest (will trigger FastAPI function)
-          const response = await fetch(`${inngestUrl}/api/v1/events`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(inngestEventKey && { 'Authorization': `Bearer ${inngestEventKey}` }),
-            },
-            body: JSON.stringify(eventData),
-          });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[Course Creation] Failed to trigger Inngest event:', {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorText,
-            });
-          } else {
-            console.log('[Course Creation] ✅ Inngest event triggered successfully');
-          }
+        if (inngestEventKey || process.env.NODE_ENV === 'development') {
+          await sendInngestEvent('course.create', eventData);
+          console.log('[Course Creation] ✅ Inngest event sent');
         } else {
           // Fallback: Direct FastAPI call if Inngest not configured
           const coreApiUrl = process.env.CORE_API_URL || 'http://localhost:8000';

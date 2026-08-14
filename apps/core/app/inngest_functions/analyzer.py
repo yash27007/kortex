@@ -25,7 +25,6 @@ from ..clients import get_gemini_client, get_redis_client
 )
 async def analyze_user_performance(
     ctx: inngest.Context,
-    step: inngest.Step,
 ) -> dict:
     """
     Analyzes quiz results to build a user's weakness profile.
@@ -105,7 +104,7 @@ async def analyze_user_performance(
             "total_incorrect": len(incorrect),
         }
     
-    analysis = await step.run("analyze-mistakes", analyze_mistakes)
+    analysis = await ctx.step.run("analyze-mistakes", analyze_mistakes)
     
     # Step 2: Use AI to identify deeper patterns
     async def identify_patterns():
@@ -172,7 +171,7 @@ Return as JSON with:
             "recommendations": result.get("recommendations", []),
         }
     
-    patterns_result = await step.run("identify-patterns", identify_patterns)
+    patterns_result = await ctx.step.run("identify-patterns", identify_patterns)
     
     # Step 3: Update user's weakness profile in Redis
     async def update_weakness_profile():
@@ -238,7 +237,7 @@ Return as JSON with:
             "weak_topics_count": len(existing.get("weak_topics", {})),
         }
     
-    profile_result = await step.run("update-weakness-profile", update_weakness_profile)
+    profile_result = await ctx.step.run("update-weakness-profile", update_weakness_profile)
     
     # Step 4: Store detailed quiz results for analytics
     async def store_analytics():
@@ -269,7 +268,7 @@ Return as JSON with:
         
         return {"analytics_stored": True}
     
-    await step.run("store-analytics", store_analytics)
+    await ctx.step.run("store-analytics", store_analytics)
     
     return {
         "status": "success",

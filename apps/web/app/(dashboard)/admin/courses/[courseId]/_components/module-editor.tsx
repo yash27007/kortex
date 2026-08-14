@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { HiPencil, HiSparkles, HiTrash, HiCheck, HiXMark } from "react-icons/hi2";
-import { useTRPC, useMutation } from "@/server/trpc/client";
+import { HiPencil, HiSparkles, HiTrash, HiCheck, HiXMark, HiChevronDown, HiChevronUp } from "react-icons/hi2";
+import { useTRPC, useQuery, useMutation } from "@/server/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import { LessonContent } from "@/app/(dashboard)/learn/[courseId]/lesson/[lessonId]/_components/lesson-content";
 
 interface Module {
   id: string;
@@ -42,6 +43,7 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(module.title);
   const [description, setDescription] = useState(module.description || "");
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
 
   const regenerateModuleMutation = useMutation(api.admin.regenerateModule.mutationOptions({
     onSuccess: () => {
@@ -150,19 +152,42 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
         </div>
 
         <div className="space-y-2 mt-4">
-          {module.lessons.map((lesson) => (
-            <div
-              key={lesson.id}
-              className="flex items-center gap-3 p-2 rounded bg-slate-900/50"
-            >
-              <span className="text-xs text-slate-500 w-8">{lesson.order}</span>
-              <span className="text-sm text-slate-300 flex-1">{lesson.title}</span>
-              <Badge variant="outline" className="text-xs">
-                {lesson.type}
-              </Badge>
-              <span className="text-xs text-slate-500">{lesson.duration}min</span>
-            </div>
-          ))}
+          {module.lessons.map((lesson) => {
+            const isExpanded = expandedLessonId === lesson.id;
+            return (
+              <div key={lesson.id} className="rounded bg-slate-900/50 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedLessonId(isExpanded ? null : lesson.id)}
+                  className="w-full flex items-center gap-3 p-2 text-left hover:bg-slate-800/50 transition-colors"
+                >
+                  <span className="text-xs text-slate-500 w-8">{lesson.order}</span>
+                  <span className="text-sm text-slate-300 flex-1">{lesson.title}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {lesson.type}
+                  </Badge>
+                  <span className="text-xs text-slate-500">{lesson.duration}min</span>
+                  <span
+                    className={`flex items-center gap-1 text-xs font-medium ${isExpanded ? "text-amber-400" : "text-slate-400"
+                      }`}
+                  >
+                    {isExpanded ? (
+                      <>
+                        Hide Content
+                        <HiChevronUp className="w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        View Content
+                        <HiChevronDown className="w-4 h-4" />
+                      </>
+                    )}
+                  </span>
+                </button>
+                {isExpanded && <LessonContentPreview lessonId={lesson.id} />}
+              </div>
+            );
+          })}
           {module.quiz && (
             <div className="flex items-center gap-3 p-2 rounded bg-amber-500/10 border border-amber-500/20 mt-2">
               <span className="text-xs text-amber-400 w-8">Q</span>
@@ -178,6 +203,29 @@ export function ModuleEditor({ module, courseId, onUpdate }: ModuleEditorProps) 
   );
 }
 
+// Lazily fetches and renders a single lesson's generated MDX content —
+// only queried once the admin expands that lesson's row.
+function LessonContentPreview({ lessonId }: { lessonId: string }) {
+  const api = useTRPC();
+  const { data: lesson, isLoading } = useQuery(
+    api.admin.getLessonContent.queryOptions({ lessonId })
+  );
 
+  return (
+    <div className="border-t border-white/5 p-4 bg-slate-950/40 max-h-[32rem] overflow-y-auto">
+      {isLoading ? (
+        <p className="text-sm text-slate-500">Loading content…</p>
+      ) : !lesson ? (
+        <p className="text-sm text-red-400">Content not found.</p>
+      ) : lesson.mdxContent ? (
+        <LessonContent content={lesson.mdxContent} />
+      ) : (
+        <p className="text-sm text-slate-500">
+          This lesson hasn&apos;t generated content yet.
+        </p>
+      )}
+    </div>
+  );
+}
 
 

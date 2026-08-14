@@ -1,104 +1,88 @@
 """
 Database Helper for Python Backend
 
-Since Prisma is TypeScript-only, we use asyncpg for direct PostgreSQL access
-or HTTP calls to the Next.js API for database updates.
+Prisma is TypeScript-only, so apps/core never talks to Postgres directly.
+Instead it calls back into internal Next.js API routes (shared-secret
+protected) that use the real Prisma client — Prisma stays the single owner
+of schema, migrations, and types.
 """
 
-import os
-import json
-from typing import Optional, Any
+from typing import Any, Optional
+
 import httpx
+
+from ..config import get_settings
 from ..utils.logger import get_logger
 
 logger = get_logger("db_helper")
 
-# Try to use HTTP API first (Next.js tRPC), fallback to direct DB if needed
-NEXTJS_API_URL = os.getenv("NEXTJS_API_URL", "http://localhost:3000")
+
+def _internal_headers() -> dict[str, str]:
+    settings = get_settings()
+    return {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": settings.internal_api_secret,
+    }
 
 
 async def update_lesson_content(
     lesson_id: str,
     mdx_content: Optional[str] = None,
-    visual_aid: Optional[dict[str, Any]] = None,
     duration: Optional[int] = None,
 ) -> bool:
+    """Update a lesson's content via the internal Next.js API.
+
+    Returns True on success, False otherwise. Callers should treat False as
+    a real failure (not silently swallow it) since it means the lesson's
+    generated content never made it into the database.
     """
-    Update lesson content in the database via Next.js API.
-    
-    Args:
-        lesson_id: Lesson ID
-        mdx_content: MDX content to save
-        visual_aid: Visual aid JSON object
-        duration: Reading duration in minutes
-    
-    Returns:
-        True if successful, False otherwise
-    """
-    try:
-        # For now, we'll use a simple approach: store in Redis and let Next.js sync
-        # Or we can make HTTP calls to Next.js API
-        # Since we're in Inngest, the best approach is to emit an event that Next.js handles
-        # But for immediate updates, we'll use Redis as a cache
-        
-        from ..clients import get_redis_client
-        redis = get_redis_client()
-        
-        # Store lesson data in Redis (Next.js will sync to DB)
-        lesson_data = {}
-        if mdx_content:
-            lesson_data["mdxContent"] = mdx_content
-        if visual_aid:
-            lesson_data["visualAid"] = json.dumps(visual_aid) if isinstance(visual_aid, dict) else visual_aid
-        if duration:
-            lesson_data["duration"] = duration
-        
-        if lesson_data:
-            await redis.set(
-                f"lesson_update:{lesson_id}",
-                lesson_data,
-                ttl=3600,  # 1 hour
-            )
-            logger.saving(f"Stored lesson update in Redis cache: {lesson_id}")
-        
-        # Try to call Next.js API if available
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    f"{NEXTJS_API_URL}/api/lessons/{lesson_id}/update",
-                    json=lesson_data,
-                    headers={"Content-Type": "application/json"},
-                )
-                if response.status_code == 200:
-                    logger.success(f"Updated lesson via API: {lesson_id}")
-                    return True
-                else:
-                    logger.warning(f"API update returned {response.status_code}: {response.text}")
-        except Exception as e:
-            logger.warning(f"API update failed, using Redis cache only: {e}")
-        
+    settings = get_settings()
+    payload: dict[str, Any] = {}
+    if mdx_content is not None:
+        payload["mdxContent"] = mdx_content
+    if duration is not None:
+        payload["duration"] = duration
+
+    if not payload:
         return True
+
+    url = f"{settings.nextjs_api_url}/api/lessons/{lesson_id}/update"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, json=payload, headers=_internal_headers())
+        if response.status_code == 200:
+            logger.saving(f"Updated lesson via API: {lesson_id}")
+            return True
+        logger.error(f"Lesson update failed ({response.status_code}): {response.text[:300]}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to update lesson: {lesson_id}", exc=e)
+        logger.error(f"Failed to reach Next.js to update lesson: {lesson_id}", exc=e)
         return False
 
 
-async def get_lesson_status(lesson_id: str) -> Optional[dict]:
-    """Get lesson status from cache or database."""
+async def save_course_structure(course_id: str, structure: dict[str, Any]) -> Optional[dict]:
+    """Persist the Architect's generated course structure (modules, lessons,
+    quizzes) via the internal Next.js API.
+
+    `structure` must match the payload shape expected by
+    apps/web/app/api/internal/courses/[courseId]/structure/route.ts.
+
+    Returns the response body (containing moduleIdMap/lessonIdMap mapping
+    the Architect's placeholder ids to real database ids) on success, or
+    None on failure.
+    """
+    settings = get_settings()
+    url = f"{settings.nextjs_api_url}/api/internal/courses/{course_id}/structure"
     try:
-        from ..clients import get_redis_client
-        redis = get_redis_client()
-        
-        # Check Redis cache first
-        cached = await redis.get(f"lesson_meta:{lesson_id}")
-        if cached:
-            return cached
-        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=structure, headers=_internal_headers())
+        if response.status_code == 200:
+            logger.success(f"Persisted course structure: {course_id}")
+            return response.json()
+        logger.error(
+            f"Course structure persist failed ({response.status_code}): {response.text[:500]}"
+        )
         return None
     except Exception as e:
-        logger.error(f"Failed to get lesson status: {lesson_id}", exc=e)
+        logger.error(f"Failed to reach Next.js to save course structure: {course_id}", exc=e)
         return None
-
-
-
-

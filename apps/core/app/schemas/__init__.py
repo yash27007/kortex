@@ -13,10 +13,6 @@ from .content import (
     ContentGenerationInput,
     ContentGenerationOutput,
 )
-from .chat import (
-    ChatInput,
-    ChatMessage,
-)
 from .quiz import (
     QuizGenerationInput,
     QuizOutput,
@@ -35,8 +31,6 @@ __all__ = [
     "BloomLevel",
     "ContentGenerationInput",
     "ContentGenerationOutput",
-    "ChatInput",
-    "ChatMessage",
     "QuizGenerationInput",
     "QuizOutput",
     "QuizQuestion",

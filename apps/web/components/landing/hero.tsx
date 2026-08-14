@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import { HiArrowRight, HiPlay } from "react-icons/hi2";
 
 // Animated Knowledge Graph - More complex and beautiful
@@ -346,7 +346,7 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.7 }}
           className="flex flex-col sm:flex-row items-start gap-4"
         >
-          <SignedOut>
+          <Show when="signed-out">
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -368,8 +368,8 @@ export function Hero() {
               <HiPlay className="w-4 h-4" />
               <span>View the Demo</span>
             </Link>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -384,7 +384,7 @@ export function Hero() {
                 <HiArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </motion.div>
-          </SignedIn>
+          </Show>
         </motion.div>
 
         {/* Decorative line */}

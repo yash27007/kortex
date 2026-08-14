@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@kortex/db";
+import { getOrCreateUser } from "@/lib/get-or-create-user";
 
 interface CoursePageProps {
   params: Promise<{ courseId: string }>;
@@ -14,11 +15,9 @@ export default async function CoursePage({ params }: CoursePageProps) {
     redirect("/sign-in");
   }
 
-  // Get user's enrollment and current progress
-  const user = await prisma.user.findFirst({
-    where: { clerkId: userId },
-    select: { id: true },
-  });
+  // Get user's enrollment and current progress — auto-provisions the
+  // User row on first touch (see getOrCreateUser for why that's needed).
+  const user = await getOrCreateUser(userId);
 
   if (!user) {
     redirect("/dashboard");

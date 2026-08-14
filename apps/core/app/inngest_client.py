@@ -10,6 +10,8 @@ Usage:
     - Quiz analysis: triggers via "quiz.completed" event
 """
 
+import logging
+
 import inngest
 from inngest.fast_api import serve
 
@@ -19,9 +21,20 @@ from .config import get_settings
 # Initialize the Inngest client
 settings = get_settings()
 
+# The Inngest SDK swallows step-execution exceptions into a bare 500 unless
+# given a logger — without this, failures inside a function body are
+# completely invisible in the FastAPI process's own logs.
+_inngest_logger = logging.getLogger("inngest")
+if not _inngest_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("[inngest] %(levelname)s: %(message)s"))
+    _inngest_logger.addHandler(_handler)
+_inngest_logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)
+
 inngest_client = inngest.Inngest(
     app_id="kortex-core",
     is_production=not settings.inngest_dev,
+    logger=_inngest_logger,
 )
 
 

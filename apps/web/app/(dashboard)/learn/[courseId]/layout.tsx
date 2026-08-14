@@ -25,7 +25,11 @@ export default function CourseLayout({ children, params }: CourseLayoutProps) {
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="relative h-screen sticky top-0 overflow-hidden"
+            // top-16/h-[calc(100vh-4rem)] offsets for the global fixed
+            // Navbar (h-16) from the root layout, which this route doesn't
+            // otherwise account for — without it, the sidebar header sits
+            // underneath the navbar instead of below it.
+            className="relative h-[calc(100vh-4rem)] sticky top-16 overflow-hidden"
           >
             <CourseSidebar courseId={courseId} onClose={() => setSidebarOpen(false)} />
           </motion.aside>
@@ -46,7 +50,9 @@ export default function CourseLayout({ children, params }: CourseLayoutProps) {
       </button>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen relative">
+      {/* pt-16 clears the global fixed Navbar (h-16) — same reason as the
+          sidebar's top-16/h-[calc(100vh-4rem)] above. */}
+      <main className="flex-1 min-h-screen relative pt-16">
         {/* Gamification HUD (top-right) */}
         <GamificationHUD />
 

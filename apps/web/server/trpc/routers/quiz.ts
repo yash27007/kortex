@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from '@/server/trpc/init';
 import { TRPCError } from '@trpc/server';
+import { sendInngestEvent } from '@/lib/inngest-events';
 
 interface QuizQuestion {
   id: string;
@@ -195,6 +196,25 @@ export const quizRouter = createTRPCRouter({
           },
         });
       }
+
+      // Fire-and-forget: feed this attempt to the weakness-profile analyzer.
+      // Wrong answers are exactly the signal it wants, so this fires on
+      // every attempt, not just passes.
+      void sendInngestEvent('quiz.completed', {
+        user_id: user.id,
+        course_id: quiz.module.courseId,
+        module_id: quiz.moduleId,
+        quiz_id: quiz.id,
+        score: score / 100,
+        questions: questions.map((q) => ({
+          question: q.text,
+          topic: quiz.module.title,
+          difficulty: 'medium',
+          is_correct: input.answers[q.id] === q.correctAnswer,
+          user_answer: input.answers[q.id] ?? '',
+          correct_idx: q.correctAnswer,
+        })),
+      });
 
       return {
         attemptId: attempt.id,

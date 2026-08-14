@@ -36,7 +36,10 @@ export function GamificationHUD() {
   }, []);
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+    // top-20 (not top-4) clears the global fixed Navbar (h-16) above this
+    // route — being `fixed` itself, this ignores <main>'s pt-16 and needs
+    // its own offset.
+    <div className="fixed top-20 right-4 z-50 flex items-center gap-3">
       {/* XP Notifications */}
       <div className="absolute -left-20 top-0 w-20">
         <AnimatePresence>

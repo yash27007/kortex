@@ -36,3 +36,19 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Python (apps/core)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+
+# Agent / AI-tool files (not part of the published project)
+.agents
+.claude
+agent
+.cursorrules
+skills-lock.json

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs"
+import { Show, UserButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 
 export function Header() {
@@ -16,7 +16,7 @@ export function Header() {
               </span>
             </Link>
             <nav className="hidden md:flex items-center gap-6">
-              <SignedIn>
+              <Show when="signed-in">
                 <Link
                   href="/dashboard"
                   className="text-gray-400 hover:text-white transition-colors"
@@ -29,8 +29,8 @@ export function Header() {
                 >
                   Courses
                 </Link>
-              </SignedIn>
-              <SignedOut>
+              </Show>
+              <Show when="signed-out">
                 <Link
                   href="#features"
                   className="text-gray-400 hover:text-white transition-colors"
@@ -43,12 +43,12 @@ export function Header() {
                 >
                   Pricing
                 </Link>
-              </SignedOut>
+              </Show>
             </nav>
           </div>
 
           <div className="flex items-center gap-4">
-            <SignedOut>
+            <Show when="signed-out">
               <Link href="/sign-in">
                 <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-800">
                   Sign In
@@ -59,8 +59,8 @@ export function Header() {
                   Get Started
                 </Button>
               </Link>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <Link href="/dashboard">
                 <Button className="bg-amber-600 hover:bg-amber-700 text-white">
                   Dashboard
@@ -73,7 +73,7 @@ export function Header() {
                   },
                 }}
               />
-            </SignedIn>
+            </Show>
           </div>
         </div>
       </div>

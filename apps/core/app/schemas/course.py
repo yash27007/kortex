@@ -16,6 +16,20 @@ class BloomLevel(str, Enum):
     CREATE = "create"
 
 
+class QuizQuestionSchema(BaseModel):
+    """A single gatekeeper-quiz question."""
+    text: str = Field(..., description="The question text")
+    type: str = Field(..., description="'multiple_choice' or 'true_false'")
+    options: list[str] = Field(..., description="Answer options (2 for true_false, 3-5 for multiple_choice)")
+    correct_answer: str = Field(..., description="Must exactly match one entry in options")
+    explanation: str = Field(default="", description="Why the correct answer is correct")
+
+
+class ModuleQuizSchema(BaseModel):
+    """The gatekeeper quiz a student must pass to advance past a module."""
+    questions: list[QuizQuestionSchema] = Field(..., min_length=3, max_length=8)
+
+
 class LessonSchema(BaseModel):
     """Lesson structure within a module."""
     title: str = Field(..., description="Lesson title")
@@ -32,13 +46,17 @@ class ModuleSchema(BaseModel):
     description: str = Field(..., description="Module description")
     order: int = Field(..., ge=1)
     bloom_progression: BloomLevel = Field(
-        ..., 
+        ...,
         description="Primary Bloom's level for this module"
     )
     lessons: list[LessonSchema] = Field(default_factory=list)
     course_outcomes: list[str] = Field(
         default_factory=list,
         description="Course outcomes addressed by this module"
+    )
+    quiz: ModuleQuizSchema = Field(
+        ...,
+        description="Gatekeeper quiz students must pass to advance past this module"
     )
 
 
@@ -75,7 +93,21 @@ class CourseStructureOutput(BaseModel):
     )
 
 
-# JSON Schema for Gemini structured output
+# JSON Schema for Gemini structured output.
+# Subject-agnostic by design: nothing here assumes a technical domain — the
+# same shape drives a biology course, a history course, or a CS course.
+QUIZ_QUESTION_JSON_SCHEMA = {
+    "type": "object",
+    "required": ["text", "type", "options", "correct_answer"],
+    "properties": {
+        "text": {"type": "string"},
+        "type": {"type": "string", "enum": ["multiple_choice", "true_false"]},
+        "options": {"type": "array", "items": {"type": "string"}},
+        "correct_answer": {"type": "string", "description": "Must exactly match one entry in options"},
+        "explanation": {"type": "string"},
+    },
+}
+
 COURSE_STRUCTURE_SCHEMA = {
     "type": "object",
     "required": ["title", "description", "course_outcomes", "modules"],
@@ -92,7 +124,7 @@ COURSE_STRUCTURE_SCHEMA = {
             "type": "array",
             "items": {
                 "type": "object",
-                "required": ["title", "description", "order", "bloom_progression", "lessons"],
+                "required": ["title", "description", "order", "bloom_progression", "lessons", "quiz"],
                 "properties": {
                     "title": {"type": "string"},
                     "description": {"type": "string"},
@@ -128,14 +160,20 @@ COURSE_STRUCTURE_SCHEMA = {
                     "course_outcomes": {
                         "type": "array",
                         "items": {"type": "string"}
+                    },
+                    "quiz": {
+                        "type": "object",
+                        "required": ["questions"],
+                        "description": "Gatekeeper quiz (3-8 questions) students must pass to advance past this module",
+                        "properties": {
+                            "questions": {
+                                "type": "array",
+                                "items": QUIZ_QUESTION_JSON_SCHEMA,
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
-
-
-
-
-

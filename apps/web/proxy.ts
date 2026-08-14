@@ -9,7 +9,6 @@ const isProtectedRoute = createRouteMatcher([
   '/profile(.*)',
   '/courses(.*)',
   '/learn(.*)',
-  '/generate(.*)',
 ])
 
 // Define routes that are always public

@@ -3,6 +3,7 @@ Kortex AI Core - Configuration
 """
 
 import os
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -15,9 +16,17 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Gemini API
+    # NOTE (2026-08): the entire Gemini 2.5 line 404s as "no longer available
+    # to new users" on freshly-created API keys, and the true Gemini 3.1 Pro
+    # model is preview-only and hits free-tier quota immediately. Verified
+    # live against this project's key: gemini-3.6-flash is the strongest
+    # model that reliably works, so it stands in for the "pro" (complex
+    # reasoning) tier; gemini-3.5-flash-lite covers the cheap/fast tier.
+    # Re-check https://ai.google.dev/gemini-api/docs/models if billing/quota
+    # changes make gemini-3.1-pro-preview viable.
     gemini_api_key: str = ""
-    gemini_pro_model: str = "gemini-2.5-pro"  # Complex tasks
-    gemini_flash_model: str = "gemini-2.5-flash"  # Fast tasks
+    gemini_pro_model: str = "gemini-3.6-flash"  # Complex tasks (structure, final lesson content)
+    gemini_flash_model: str = "gemini-3.5-flash-lite"  # Fast/cheap tasks
     
     # Qdrant Vector DB
     qdrant_host: str = "localhost"
@@ -44,11 +53,18 @@ class Settings(BaseSettings):
     storage_bucket_assets: str = "assets"  # For general assets
     
     # Tavily API for web search
-    # Reads from TAVILY_KEY environment variable
-    tavily_key: str = ""
+    # Accepts either TAVILY_KEY (canonical) or TAVILY_API_KEY (common typo/alt name)
+    tavily_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("TAVILY_KEY", "TAVILY_API_KEY"),
+    )
     
     # Embedding model
-    embedding_model: str = "models/text-embedding-004"
+    # text-embedding-004 also 404s on new keys; gemini-embedding-2 is the
+    # current stable replacement. It defaults to 3072-dim output, so we
+    # explicitly truncate to 768 (via output_dimensionality) to match the
+    # existing Qdrant collection sizing below.
+    embedding_model: str = "models/gemini-embedding-2"
     embedding_dimensions: int = 768
     
     # Chunk settings
@@ -66,7 +82,12 @@ class Settings(BaseSettings):
     
     # Firecrawl API (for enhanced web scraping)
     firecrawl_api_key: str | None = None
-    
+
+    # Internal service-to-service auth (Python -> Next.js callbacks).
+    # Must match INTERNAL_API_SECRET in apps/web's env.
+    internal_api_secret: str = ""
+    nextjs_api_url: str = "http://localhost:3000"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
