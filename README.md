@@ -323,7 +323,7 @@ This is an honest list, kept up to date rather than aspirational:
 
 **AI assistance was used for frontend development only.** All backend
 logic — the FastAPI service, the Inngest pipeline, the Prisma schema, and
-the tRPC routers — was hand-written.
+the tRPC routers — was hardcoded and used ai as a mentor to guide the development.
 
 Admin credentials (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SECRET`) fall
 back to a documented, insecure development default if unset, so a fresh
@@ -340,5 +340,8 @@ to use, study, modify, and redistribute it, including commercially. The
 app: if you run a modified version as a network service, AGPL requires you
 to offer your users the complete corresponding source of that modified
 version — even though you never handed them a copy of the software
-directly. Plain GPL does not have that requirement; AGPL exists precisely
-to close that gap for server-side software.
+directly.
+
+Like the repo if you found this useful and want to support future development.
+
+Author: [Yashwanth Aravind](https://github.com/yash27007)
